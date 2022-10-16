@@ -1,0 +1,4 @@
+[submodule "FrontierWithUniques"]
+    path = frontier
+    url = https://github.com/arturgontijo/frontier.git
+    branch = poc-evm-uniques
