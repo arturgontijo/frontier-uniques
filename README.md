@@ -1,6 +1,14 @@
 # Frontier EVM NFTs to Uniques Pallet (Proof-of-Concept)
 
-### Running Frontier
+
+### Cloning this repo
+
+```shell
+git clone --recurse-submodules https://github.com/arturgontijo/frontier-uniques.git
+cd frontier-uniques/
+```
+
+### Running Frontier (with Uniques and instant sealing)
 
 ```shell
 cd frontier/
