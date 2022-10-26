@@ -2,19 +2,12 @@ import { ApiPromise, WsProvider } from '@polkadot/api';
 
 let _api;
 
-const setup = async (address) => {
+const setup = async () => {
     if (!_api) {
         const wsProvider = new WsProvider(process.env.RPC_ENDPOINT);
         _api = await ApiPromise.create({ provider: wsProvider });
     }
     return _api;
-}
-
-const subscribe = async () => {
-    const api = await setup();
-    const unsubscribe = await api.rpc.chain.subscribeNewHeads((header) => {
-        console.log(`Chain is at block: #${header.number}`);
-    });
 }
 
 const getModules = async (name) => {
@@ -65,35 +58,37 @@ const getMethods = async (module) => {
 const getData = async (module, method) => {
     const api = await setup();
     let d = [];
-    if (typeof api.query[module][method]?.entries === "function") {
+    if (typeof api.query[module][method]?.entries === 'function') {
         d = await api.query[module][method].entries();
-    } else if (typeof api.query[module][method]?.keys === "function") {
+    } else if (typeof api.query[module][method]?.keys === 'function') {
         let keys = await api.query[module][method].keys();
         keys.forEach(async (k) => {
             const s = await api.rpc.state.getStorage(k);
-            let sk = k.toHuman();
-            d.push([`${sk.slice(0, 10)}...${sk.slice(-10, sk.length)}`, s]);
+            d.push([k.toHuman(), s]);
         });
-    } else if (typeof api.query[module][method] === "function") {
+    } else if (typeof api.query[module][method] === 'function') {
         d.push([await api.query[module][method](), '']);
     }
+
+    let nodeIds = []
     let r = [];
     d.forEach(([key, data]) => {
+
         let k = key;
         if (typeof key?.args?.map === "function") {
             k = key?.args?.map((k) => k.toHuman());
         }
-        if (typeof data.toHuman === "function") {
-            data = data.toHuman()
-        }
-        if (typeof (data) !== 'object') data = { data };
         k = k.toString();
         if (k.length > 20) k = `${k.slice(0, 10)}...${k.slice(-10, k.length)}`;
+
+        if (typeof data.toHuman === 'function') data = data.toHuman();
+        if (typeof (data) !== 'object') data = { data };
+
         r.push({
-            id: k,
-            label: k,
+            id: key.args?.length ? key?.args?.map((k) => k.toHuman()) : k,
+            label: k.length > 30 ? `${k.slice(0, 15)}...${k.slice(-15, k.length)}` : k,
             name: k,
-            type: 'data',
+            type: 'key',
             module,
             method,
             size: 180,
@@ -101,14 +96,15 @@ const getData = async (module, method) => {
             subMenuData: {
                 label: 'data',
                 data,
-            }
+            },
         });
     });
+    console.log(`nodeIds -> ${JSON.stringify(nodeIds)}`)
     return r;
 }
 
 export {
-    subscribe,
+    setup,
     getModules,
     getMethods,
     getData,

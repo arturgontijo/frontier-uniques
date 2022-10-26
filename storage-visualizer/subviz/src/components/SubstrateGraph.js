@@ -13,18 +13,13 @@ import {
 import 'react-contexify/dist/ReactContexify.css';
 
 import {
-    subscribe,
+    setup,
     getModules,
     getMethods,
     getData,
 } from '../tools/helpers';
 
 const MENU_ID = 'contextMenuId_0'
-const _FORMATTER = {
-    actions: { field: 'action_type', value: 'value' },
-    cost_per_action_type: { field: 'action_type', value: 'value' },
-};
-
 
 export default class SubstrateGraph extends React.Component {
     constructor(props) {
@@ -32,7 +27,7 @@ export default class SubstrateGraph extends React.Component {
 
         this.state = {
             graphData: {
-                nodes: [{ id: 'root', name: 'runtime', x: 25, y: window.innerHeight / 2 }],
+                nodes: [{ id: 'root', label: 'runtime', x: 30, y: window.innerHeight / 2 }],
                 links: [],
             },
             graphConfig: {
@@ -58,11 +53,13 @@ export default class SubstrateGraph extends React.Component {
                 },
             },
             selectedNode: undefined,
-            insights: {},
+            expandedNodes: [],
             contextMenuEvent: undefined,
         };
 
         this.graphRef = React.createRef();
+
+        this.subscribe = this.subscribe.bind(this);
 
         this.getNodeById = this.getNodeById.bind(this);
         this.getLinkById = this.getLinkById.bind(this);
@@ -89,12 +86,12 @@ export default class SubstrateGraph extends React.Component {
                 return '';
             }
         }
-        return node?.name;
+        return node?.label;
     }
 
     async componentDidMount() {
         const { graphData } = this.state;
-        await subscribe();
+        await this.subscribe();
         const node = this.getNodeById('root');
         const modules = await getModules() || [];
         let radius = 100 * (1 + modules.length / 30);
@@ -117,6 +114,13 @@ export default class SubstrateGraph extends React.Component {
         this.setState({ selectedNode: undefined });
     }
 
+    async subscribe() {
+        const api = await setup();
+        await api.rpc.chain.subscribeNewHeads((header) => {
+            console.log(`Chain is at block: #${header.number} -> ${this.state.expandedNodes}`);
+        });
+    }
+
     getNodeById(nodeId) {
         return this.state.graphData.nodes.find(x => x.id === nodeId);
     }
@@ -126,7 +130,7 @@ export default class SubstrateGraph extends React.Component {
     }
 
     async onClickNode(nodeId, node) {
-        const { graphData } = this.state;
+        const { graphData, expandedNodes } = this.state;
 
         let newNodeIds = [];
         if (node.type === 'module') {
@@ -135,6 +139,7 @@ export default class SubstrateGraph extends React.Component {
             let m = node.id.replace(`${node.module}_`, '');
             newNodeIds = await getData(node.module, m);
         }
+        if (!(node.id in expandedNodes)) expandedNodes.push(node.id);
 
         if (newNodeIds) {
             let radius = newNodeIds.length < 10 ? 120 : 120 * (1 + newNodeIds.length / 30);
@@ -225,17 +230,12 @@ export default class SubstrateGraph extends React.Component {
     }
 
     buildNestedSubMenus(field, value, idx) {
-        let formatter = _FORMATTER[field];
         if (Array.isArray(value) && value.length) {
             return (
                 <Submenu label={field}>
                     {value.map((_subField, subIdx) => {
                         let subField = _subField;
                         let subValue = value[subField];
-                        if (formatter) {
-                            subField = _subField[formatter.field];
-                            subValue = _subField[formatter.value];
-                        }
                         return this.buildNestedSubMenus(subField, subValue, subIdx);
                     })}
                 </Submenu>
@@ -263,7 +263,7 @@ export default class SubstrateGraph extends React.Component {
     }
 
     buildSubMenus() {
-        const { insights, selectedNode } = this.state;
+        const { selectedNode } = this.state;
         const data = selectedNode?.subMenuData?.data;
         return (
             <div>
@@ -302,7 +302,7 @@ export default class SubstrateGraph extends React.Component {
                 }
                 <Menu id={MENU_ID}>
                     <Item onClick={this.handleItemClick}>
-                        {selectedNode ? selectedNode.label : 'NodeId'}
+                        {selectedNode ? selectedNode.name : 'NodeId'}
                     </Item>
                     {this.buildSubMenus()}
                 </Menu>
