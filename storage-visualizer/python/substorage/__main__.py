@@ -18,7 +18,7 @@ def query_map_and_print(
         result = substrate.query_map(
             module,
             entry,
-            params=params or [],
+            params=params,
             page_size=200,
             max_results=400
         )
@@ -32,11 +32,15 @@ def query_map_and_print(
 
     except Exception as e:
         if substrate:
-            result = substrate.query(module, entry)
-            print(result)
-        else:
-            print(f'\nERROR: {e}')
-            print(f'\nERROR: Is you Substrate node up and running at "{url}"?\n')
+            try:
+                result = substrate.query(module, entry, params=params)
+                print(result)
+                return
+            except Exception as _e:
+                e = _e
+        print(f'\nERROR: {e}')
+        print(f'\nERROR: Maybe try it with "--params None"')
+        print(f'\nERROR: Is you Substrate node up and running at "{url}"?\n')
 
 
 def main():
@@ -44,7 +48,12 @@ def main():
     parser.add_argument('--url', help='Node websocket url.', default='ws://127.0.0.1:9944')
     parser.add_argument('--module', help='Storage module.', default='EVM')
     parser.add_argument('--entry', help='Storage module entry.', default='AccountStorages')
-    parser.add_argument('--params', help='Storage module entry params.', nargs='+', default=['0xc2bf5f29a4384b1ab0c063e1c666f02121b6084a'])
+    parser.add_argument(
+        '--params',
+        help='Storage module entry params (try "None" for no params).',
+        nargs='+',
+        default=['0xc2bf5f29a4384b1ab0c063e1c666f02121b6084a']
+    )
     parser.add_argument('--metadata', help='Dump Storage metadata.', action='store_true')
     args = parser.parse_args()
 
@@ -65,7 +74,7 @@ def main():
             url=args.url,
             module=args.module,
             entry=args.entry,
-            params=args.params,
+            params=args.params if args.params[0] != 'None' else None,
         )
 
 
