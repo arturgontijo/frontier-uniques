@@ -1,7 +1,7 @@
 # Python Substrate Interface Storage Visualizer
 
 ```shell
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 python3 substorage --help
 ```
 
